@@ -1,3 +1,5 @@
+import authRoutes from './routes/auth.routes';
+import './events/auth.events'; // registers the listeners
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -32,6 +34,7 @@ environment: config.NODE_ENV,
 });
 // === ROUTES (mounted here as you build them) ===
 // app.use('/api/v1/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 // app.use('/api/v1/documents', documentRoutes);
 // app.use('/api/v1/chat', chatRoutes);
 // === ERROR HANDLER (must be last middleware) ===
