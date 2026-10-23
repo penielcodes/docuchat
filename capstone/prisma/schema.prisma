@@ -19,7 +19,10 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-   refreshTokens RefreshToken[]
+  refreshTokens RefreshToken[]
+  roles         UserRole[]
+  documents     Document[]
+  conversations Conversation[]
 
   @@index([email])
 }
@@ -35,4 +38,142 @@ model RefreshToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+// A named group of permissions — 'admin', 'member', 'viewer'
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+// A specific, granular action — 'documents:create', 'users:manage'
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  resource    String
+  action      String
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@unique([resource, action])
+}
+
+// Join table: which roles does a user have?
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+// Join table: which permissions does a role carry?
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+model Document {
+  id            String    @id @default(cuid())
+  userId        String
+  title         String
+  filename      String
+  content       String
+  status        String    @default("pending") // pending | processing | ready | failed
+  chunkCount    Int       @default(0)
+  fileSizeBytes Int       @default(0)
+  error         String?
+  deletedAt     DateTime? // soft delete
+  deletedBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks   Chunk[]
+  messages Message[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Chunk {
+  id         String @id @default(cuid())
+  documentId String
+  index      Int
+  content    String
+  tokenCount Int    @default(0)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId])
+}
+
+model Message {
+  id               String   @id @default(cuid())
+  conversationId   String
+  documentId       String?
+  role             String   // 'user' | 'assistant'
+  content          String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  costUsd          Float    @default(0)
+  createdAt        DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  document     Document?    @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId])
+}
+
+model UsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // 'document_created', 'chat', 'role_assigned', etc.
+  tokens    Int      @default(0)
+  costUsd   Float    @default(0)
+  metadata  String?  // JSON string
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model WebhookEvent {
+  id          String    @id // the provider's own event ID — not auto-generated
+  provider    String
+  eventType   String
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  payload     String
+
+  @@index([provider, eventType])
 }

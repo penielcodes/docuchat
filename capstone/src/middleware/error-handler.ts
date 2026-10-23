@@ -4,6 +4,16 @@ import { AppError } from '../lib/errors';
 // This MUST have exactly 4 parameters — that's how Express recognizes
 // error-handling middleware. A 3-param function here is silently ignored
 // on errors.
+function scrubSensitiveData(data: string): string {
+  const patterns = [
+    /Bearer [A-Za-z0-9\-._~+\/]+=*/g,
+    /sk-[A-Za-z0-9]{20,}/g,
+    /password["']?\s*[:=]\s*["']?[^"'\s,}]+/gi,
+  ];
+  let scrubbed = data;
+  for (const pattern of patterns) scrubbed = scrubbed.replace(pattern, '[REDACTED]');
+  return scrubbed;
+}
 export function errorHandler(
   err: Error,
   req: Request,

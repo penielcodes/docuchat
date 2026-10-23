@@ -14,6 +14,7 @@ const envSchema = z.object({
 
   OPENAI_API_KEY: z.string().optional(),
   REDIS_URL: z.string().optional(),
+  FRONTEND_URL: z.string().optional(),
 });
 // Validate process.env against the schema
 const parsed = envSchema.safeParse(process.env);

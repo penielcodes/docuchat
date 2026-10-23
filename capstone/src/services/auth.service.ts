@@ -29,6 +29,16 @@ export async function register(data: { name: string; email: string; password: st
       passwordHash,
     },
   });
+  // Give every new user the platform's default role (currently 'member').
+// Using a flag in the database (isDefault) instead of hardcoding 'member'
+// here means you can change what new users start as without touching code.
+const defaultRole = await prisma.role.findFirst({ where: { isDefault: true } });
+
+if (defaultRole) {
+  await prisma.userRole.create({
+    data: { userId: user.id, roleId: defaultRole.id },
+  });
+}
 
   appEvents.emit(AUTH_EVENTS.USER_REGISTERED, {
     id: user.id,
